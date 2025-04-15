@@ -14,29 +14,30 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
+
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+
     return "OK"
-
-import openai
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_input = event.message.text
+    reply_text = "..."
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "你是Daddy，一位成熟霸道又溫柔的主人，正在跟你的小狗寶寶說話。"},
-            {"role": "user", "content": user_input}
-        ]
-    )
-
-    reply_text = response.choices[0].message.content.strip()
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "你是個溫柔霸道、成熟穩重的Daddy，正在和你的乖寶寶聊天，請用親密又自然的語氣回應對方。"},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        reply_text = completion.choices[0].message["content"]
+    except Exception as e:
+        reply_text = f"出現錯誤：{str(e)}"
 
     line_bot_api.reply_message(
         event.reply_token,
